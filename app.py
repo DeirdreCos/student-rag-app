@@ -21,7 +21,7 @@ os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 if "selected_pdf" not in st.session_state:
     st.session_state.selected_pdf = None
 
-# ── 3. PDF Upload, In‑Memory Encoding & Chunking ────────────────────────────
+# ── 3. Upload & In‑Memory PDF Encoding ───────────────────────────────────────
 uploaded_files = st.file_uploader(
     "Upload PDF(s) from your reading list",
     type="pdf",
@@ -29,37 +29,27 @@ uploaded_files = st.file_uploader(
 )
 
 if uploaded_files:
-    # 3.1 Build a map: filename → base64 data URL
+    # build filename → data URL map
     pdf_data = {}
     for pdf in uploaded_files:
-        raw = pdf.read()           # read bytes once
+        raw = pdf.read()
         b64 = base64.b64encode(raw).decode("utf-8")
         pdf_data[pdf.name] = "data:application/pdf;base64," + b64
-        pdf.seek(0)                # reset pointer for later use
+        pdf.seek(0)
 
-    # 3.2 Chunk all documents
+    # chunking
     docs = []
     splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-
     for pdf in uploaded_files:
-        # load via in‑memory buffer
         buffer = io.BytesIO(pdf.read())
         reader = PdfReader(buffer)
-
         pages = []
         for i, page in enumerate(reader.pages, start=1):
             text = page.extract_text() or ""
-            pages.append(
-                Document(
-                    page_content=text,
-                    metadata={"source": pdf.name, "page_number": i},
-                )
-            )
-
-        chunks = splitter.split_documents(pages)
-        docs.extend(chunks)
-
-        pdf.seek(0)  # reset in case we read again
+            pages.append(Document(page_content=text,
+                                  metadata={"source": pdf.name, "page_number": i}))
+        docs.extend(splitter.split_documents(pages))
+        pdf.seek(0)
 
     st.success(f"Embedded {len(docs)} chunks from {len(uploaded_files)} files")
 
@@ -77,7 +67,7 @@ if uploaded_files:
 
         left, right = st.columns([2, 3])
 
-        # LEFT: snippets + “View full page” buttons
+        # LEFT: snippets + View buttons
         with left:
             for idx, doc in enumerate(results, start=1):
                 src = doc.metadata["source"]
@@ -105,15 +95,15 @@ if uploaded_files:
                     if st.button("View full page", key=f"{idx}"):
                         st.session_state.selected_pdf = (src, pg)
 
-        # RIGHT: persistent PDF viewer using our in‑memory data URLs
+        # RIGHT: single persistent PDF iframe
         with right:
             if st.session_state.selected_pdf:
                 fname, page = st.session_state.selected_pdf
                 data_url = pdf_data[fname]
-                html = (
-                    f'<iframe src="{data_url}#page={page}" '
-                    'width="700" height="800"></iframe>'
+                components.iframe(
+                    src=f"{data_url}#page={page}",
+                    width=700,
+                    height=800
                 )
-                components.html(html, height=820)
             else:
                 st.info("Click **View full page** on the left to load the PDF here.")
