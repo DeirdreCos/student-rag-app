@@ -96,12 +96,13 @@ if uploaded_files:
                     if st.button("View full page", key=f"view_{idx}"):
                         st.session_state.selected_pdf = (src, pg)
 
-        # RIGHT: embed the selected PDF page
+        # ── RIGHT: show PDF page + fallback link ────────────────────────────
         with right:
             if st.session_state.selected_pdf:
                 fname, page = st.session_state.selected_pdf
                 data_url = pdf_data[fname]
 
+                # Try the iframe first
                 iframe_html = f'''
                     <iframe
                         src="{data_url}#page={page}"
@@ -110,5 +111,11 @@ if uploaded_files:
                     ></iframe>
                 '''
                 components.html(iframe_html, height=820)
+
+                # Fallback link
+                st.markdown(
+                    f"🔗 [Open this PDF page in a new tab]({data_url}#page={page})",
+                    unsafe_allow_html=True,
+                )
             else:
                 st.info("Click **View full page** on the left to load the PDF here.")
