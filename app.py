@@ -101,4 +101,20 @@ if uploaded_files:
                     flags=re.IGNORECASE
                 )
 
-                with st.expander(f"{idx}. {src}  (p.{pg
+                with st.expander(f"{idx}. {src}  (p.{pg})"):
+                    st.write(snippet + " …")
+                    if st.button("View full page", key=f"{idx}"):
+                        st.session_state.selected_pdf = (src, pg)
+
+        # RIGHT: single persistent PDF viewer
+        with col2:
+            if st.session_state.selected_pdf:
+                fname, page = st.session_state.selected_pdf
+                data_url = pdf_to_data_url(fname)
+                html = (
+                    f'<iframe src="{data_url}#page={page}" '
+                    'width="700" height="800"></iframe>'
+                )
+                components.html(html, height=820)
+            else:
+                st.info("Click **View full page** on the left to load the PDF here.")
