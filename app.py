@@ -59,6 +59,36 @@ if uploaded_files:
         embedding=embeddings
     )
 
-    # ── 5. Search UI ───────────────────────────────────────────────────────────
-    query = st.text_input("🔍 Enter a keyword/phrase or Boolean query")
-    k
+    # ── 5. Search UI ─────────────────────────────────────────────────────────────
+query = st.text_input("🔍 Enter a keyword/phrase or Boolean query")
+k     = st.slider("Top k matches", 1, 20, 5)
+
+if query:
+    results = vectordb.similarity_search(query, k=k)
+    st.markdown(f"### 🔍 Top {len(results)} passages for: *{query}*")
+    for idx, doc in enumerate(results, start=1):
+        src = doc.metadata["source"]
+        pg  = doc.metadata["page_number"]
+
+        # build ~150‑word snippet around the query match
+        text  = re.sub(r"\s+", " ", doc.page_content)
+        words = text.split()
+        pos   = next(
+            (i for i,w in enumerate(words)
+             if re.search(re.escape(query), w, re.IGNORECASE)),
+            len(words)//2
+        )
+        start, end = max(0, pos-75), min(len(words), pos+75)
+        snippet = " ".join(words[start:end])
+        snippet = re.sub(
+            re.escape(query),
+            lambda m: f"**{m.group(0)}**",
+            snippet,
+            flags=re.IGNORECASE
+        )
+
+        # display in expander with inline PDF page
+        with st.expander(f"{idx}. {src}  (p.{pg})"):
+            st.write(snippet + " …")
+            pdf_url = f"{src}#page={pg}"
+            components.iframe(pdf_url, width=700, height=500)
