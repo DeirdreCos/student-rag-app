@@ -6,7 +6,7 @@ import streamlit.components.v1 as components
 from pypdf import PdfReader
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain_openai.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import Chroma
 
 # ── 1. App Config ────────────────────────────────────────────────────────────
