@@ -88,7 +88,7 @@ if query:
         )
 
         # display in expander with inline PDF page
-        with st.expander(f"{idx}. {src}  (p.{pg})"):
-            st.write(snippet + " …")
-            pdf_url = f"{src}#page={pg}"
-            components.iframe(pdf_url, width=700, height=500)
+            with st.expander(f"{idx}. {src}  (p.{pg})"):
+                st.write(snippet + " …")
+                pdf_url = f"{src}#page={pg}"
+                components.iframe(pdf_url, width=700, height=500)
