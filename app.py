@@ -95,11 +95,16 @@ if uploaded_files:
                     if st.button("View full page", key=f"{idx}"):
                         st.session_state.selected_pdf = (src, pg)
 
-        # RIGHT: show the PDF via an <embed> tag
+        # RIGHT: debug + show the PDF via <embed>
         with right:
+            st.write("🔧 DEBUG – selected_pdf:", st.session_state.selected_pdf)
+
             if st.session_state.selected_pdf:
                 fname, page = st.session_state.selected_pdf
+                st.write(f"🔧 DEBUG – pdf_data keys: {list(pdf_data.keys())}")
                 data_url = pdf_data[fname]
+                st.write(f"🔧 DEBUG – data_url starts with: {data_url[:30]}...")
+
                 html = (
                     f'<embed src="{data_url}#page={page}" '
                     'width="700" height="800" '
