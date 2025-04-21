@@ -7,6 +7,7 @@ from pypdf import PdfReader
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai.embeddings import OpenAIEmbeddings
+from langchain.vectorstores import FAISS
 from langchain.vectorstores import Chroma
 
 # ── 1. App Config ────────────────────────────────────────────────────────────
@@ -55,11 +56,13 @@ if uploaded_files:
 
     # ── 4. Build Vector Store ──────────────────────────────────────────────────
     embeddings = OpenAIEmbeddings()
-    vectordb = Chroma.from_documents(
-        documents=docs,
-        embedding=embeddings,
-        persist_directory=None
-    )
+        
+# Use FAISS (in‑memory) instead of Chroma to avoid disk‑write errors
+vectordb = FAISS.from_documents(
+    documents=docs,
+    embedding=embeddings
+)
+
 
     # ── 5. Search UI ───────────────────────────────────────────────────────────
     query = st.text_input("🔍 Enter a keyword/phrase or Boolean query")
