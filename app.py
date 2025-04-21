@@ -1,6 +1,7 @@
 import os
 import re
 import base64
+import io
 
 import streamlit as st
 import streamlit.components.v1 as components
@@ -20,14 +21,7 @@ os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 if "selected_pdf" not in st.session_state:
     st.session_state.selected_pdf = None
 
-# ── Helper: Turn a PDF file into a browser‑renderable data URL ──────────────
-def pdf_to_data_url(path):
-    with open(path, "rb") as f:
-        data = f.read()
-    b64 = base64.b64encode(data).decode("utf-8")
-    return "data:application/pdf;base64," + b64
-
-# ── 3. PDF Upload & Chunking ─────────────────────────────────────────────────
+# ── 3. PDF Upload, In‑Memory Encoding & Chunking ────────────────────────────
 uploaded_files = st.file_uploader(
     "Upload PDF(s) from your reading list",
     type="pdf",
@@ -35,16 +29,23 @@ uploaded_files = st.file_uploader(
 )
 
 if uploaded_files:
+    # 3.1 Build a map: filename → base64 data URL
+    pdf_data = {}
+    for pdf in uploaded_files:
+        raw = pdf.read()           # read bytes once
+        b64 = base64.b64encode(raw).decode("utf-8")
+        pdf_data[pdf.name] = "data:application/pdf;base64," + b64
+        pdf.seek(0)                # reset pointer for later use
+
+    # 3.2 Chunk all documents
     docs = []
     splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
 
     for pdf in uploaded_files:
-        # save to disk
-        with open(pdf.name, "wb") as f:
-            f.write(pdf.getbuffer())
+        # load via in‑memory buffer
+        buffer = io.BytesIO(pdf.read())
+        reader = PdfReader(buffer)
 
-        # load pages
-        reader = PdfReader(pdf.name)
         pages = []
         for i, page in enumerate(reader.pages, start=1):
             text = page.extract_text() or ""
@@ -55,20 +56,18 @@ if uploaded_files:
                 )
             )
 
-        # split into chunks
         chunks = splitter.split_documents(pages)
         docs.extend(chunks)
+
+        pdf.seek(0)  # reset in case we read again
 
     st.success(f"Embedded {len(docs)} chunks from {len(uploaded_files)} files")
 
     # ── 4. Build Vector Store ──────────────────────────────────────────────────
     embeddings = OpenAIEmbeddings()
-    vectordb = FAISS.from_documents(
-        documents=docs,
-        embedding=embeddings
-    )
+    vectordb = FAISS.from_documents(documents=docs, embedding=embeddings)
 
-    # ── 5. Search UI & Two‑Column Viewer ──────────────────────────────────────
+    # ── 5. Search & Two‑Column Viewer ──────────────────────────────────────────
     query = st.text_input("🔍 Enter a keyword/phrase or Boolean query")
     k     = st.slider("Top k matches", 1, 20, 5)
 
@@ -76,15 +75,15 @@ if uploaded_files:
         results = vectordb.similarity_search(query, k=k)
         st.markdown(f"### 🔍 Top {len(results)} passages for: *{query}*")
 
-        col1, col2 = st.columns([2, 3])
+        left, right = st.columns([2, 3])
 
-        # LEFT: snippets + buttons
-        with col1:
+        # LEFT: snippets + “View full page” buttons
+        with left:
             for idx, doc in enumerate(results, start=1):
                 src = doc.metadata["source"]
                 pg  = doc.metadata["page_number"]
 
-                # build ~150-word snippet around the match
+                # build ~150‑word snippet
                 text  = re.sub(r"\s+", " ", doc.page_content)
                 words = text.split()
                 pos   = next(
@@ -106,11 +105,11 @@ if uploaded_files:
                     if st.button("View full page", key=f"{idx}"):
                         st.session_state.selected_pdf = (src, pg)
 
-        # RIGHT: single persistent PDF viewer
-        with col2:
+        # RIGHT: persistent PDF viewer using our in‑memory data URLs
+        with right:
             if st.session_state.selected_pdf:
                 fname, page = st.session_state.selected_pdf
-                data_url = pdf_to_data_url(fname)
+                data_url = pdf_data[fname]
                 html = (
                     f'<iframe src="{data_url}#page={page}" '
                     'width="700" height="800"></iframe>'
