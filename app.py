@@ -95,21 +95,27 @@ if uploaded_files:
                     if st.button("View full page", key=f"{idx}"):
                         st.session_state.selected_pdf = (src, pg)
 
-        # RIGHT: debug + show the PDF via <embed>
+        # RIGHT: show PDF via an <object> tag
         with right:
             st.write("🔧 DEBUG – selected_pdf:", st.session_state.selected_pdf)
 
             if st.session_state.selected_pdf:
                 fname, page = st.session_state.selected_pdf
-                st.write(f"🔧 DEBUG – pdf_data keys: {list(pdf_data.keys())}")
                 data_url = pdf_data[fname]
-                st.write(f"🔧 DEBUG – data_url starts with: {data_url[:30]}...")
 
-                html = (
-                    f'<embed src="{data_url}#page={page}" '
-                    'width="700" height="800" '
-                    'type="application/pdf">'
-                )
-                components.html(html, height=820)
+                object_html = f'''
+                    <object
+                        data="{data_url}#page={page}"
+                        type="application/pdf"
+                        width="700"
+                        height="800"
+                    >
+                      <p>Your browser does not support embedded PDFs.
+                         <a href="{data_url}">Download the PDF</a>.
+                      </p>
+                    </object>
+                '''
+                components.html(object_html, height=820)
             else:
                 st.info("Click **View full page** on the left to load the PDF here.")
+
