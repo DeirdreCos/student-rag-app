@@ -96,26 +96,22 @@ if uploaded_files:
                         st.session_state.selected_pdf = (src, pg)
 
         # RIGHT: show PDF via an <object> tag
-        with right:
-            st.write("🔧 DEBUG – selected_pdf:", st.session_state.selected_pdf)
+         with right:
+             st.write("🔧 DEBUG – selected_pdf:", st.session_state.selected_pdf)
 
-            if st.session_state.selected_pdf:
-                fname, page = st.session_state.selected_pdf
-                data_url = pdf_data[fname]
+             if st.session_state.selected_pdf:
+                 fname, page = st.session_state.selected_pdf
+                 data_url = pdf_data[fname]
 
-                object_html = f'''
-                    <object
-                        data="{data_url}#page={page}"
-                        type="application/pdf"
-                        width="700"
-                        height="800"
-                    >
-                      <p>Your browser does not support embedded PDFs.
-                         <a href="{data_url}">Download the PDF</a>.
-                      </p>
-                    </object>
-                '''
-                components.html(object_html, height=820)
-            else:
-                st.info("Click **View full page** on the left to load the PDF here.")
+                 # ← New iframe embed
+                 iframe_html = f'''
+                     <iframe
+                         src="{data_url}#page={page}"
+                         width="700"
+                         height="800"
+                     ></iframe>
+                 '''
+                 components.html(iframe_html, height=820)
 
+             else:
+                 st.info("Click **View full page** on the left to load the PDF here.")
