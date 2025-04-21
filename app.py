@@ -16,7 +16,7 @@ from langchain.vectorstores import FAISS
 st.set_page_config(page_title="📚 Student RAG MVP", layout="wide")
 st.title("📖 Research Assistant with Inline PDF Viewer")
 
-# ── 2. OpenAI Key & Viewer State ────────────────────────────────────────────
+# ── 2. Load OpenAI Key & Viewer State ───────────────────────────────────────
 os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 if "selected_pdf" not in st.session_state:
     st.session_state.selected_pdf = None
@@ -29,7 +29,7 @@ uploaded_files = st.file_uploader(
 )
 
 if uploaded_files:
-    # build filename → data URL map
+    # Turn each PDF into a base64 data‑URL
     pdf_data = {}
     for pdf in uploaded_files:
         raw = pdf.read()
@@ -37,25 +37,26 @@ if uploaded_files:
         pdf_data[pdf.name] = "data:application/pdf;base64," + b64
         pdf.seek(0)
 
-    # chunking
+    # Split into pages → chunks
     docs = []
     splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     for pdf in uploaded_files:
-        buffer = io.BytesIO(pdf.read())
-        reader = PdfReader(buffer)
+        reader = PdfReader(io.BytesIO(pdf.read()))
         pages = []
         for i, page in enumerate(reader.pages, start=1):
             text = page.extract_text() or ""
-            pages.append(Document(page_content=text,
-                                  metadata={"source": pdf.name, "page_number": i}))
+            pages.append(Document(
+                page_content=text,
+                metadata={"source": pdf.name, "page_number": i}
+            ))
         docs.extend(splitter.split_documents(pages))
         pdf.seek(0)
 
-    st.success(f"Embedded {len(docs)} chunks from {len(uploaded_files)} files")
+    st.success(f"🔗 Embedded {len(docs)} chunks from {len(uploaded_files)} file(s)")
 
     # ── 4. Build Vector Store ──────────────────────────────────────────────────
     embeddings = OpenAIEmbeddings()
-    vectordb = FAISS.from_documents(documents=docs, embedding=embeddings)
+    vectordb    = FAISS.from_documents(documents=docs, embedding=embeddings)
 
     # ── 5. Search & Two‑Column Viewer ──────────────────────────────────────────
     query = st.text_input("🔍 Enter a keyword/phrase or Boolean query")
@@ -67,13 +68,13 @@ if uploaded_files:
 
         left, right = st.columns([2, 3])
 
-        # LEFT: snippets + View buttons
+        # LEFT: snippets + “View full page” buttons
         with left:
             for idx, doc in enumerate(results, start=1):
                 src = doc.metadata["source"]
                 pg  = doc.metadata["page_number"]
 
-                # build ~150‑word snippet
+                # build ~150‑word snippet around the query
                 text  = re.sub(r"\s+", " ", doc.page_content)
                 words = text.split()
                 pos   = next(
@@ -92,26 +93,22 @@ if uploaded_files:
 
                 with st.expander(f"{idx}. {src}  (p.{pg})"):
                     st.write(snippet + " …")
-                    if st.button("View full page", key=f"{idx}"):
+                    if st.button("View full page", key=f"view_{idx}"):
                         st.session_state.selected_pdf = (src, pg)
 
-        # RIGHT: show PDF via an <object> tag
-         with right:
-             st.write("🔧 DEBUG – selected_pdf:", st.session_state.selected_pdf)
+        # RIGHT: embed the selected PDF page
+        with right:
+            if st.session_state.selected_pdf:
+                fname, page = st.session_state.selected_pdf
+                data_url = pdf_data[fname]
 
-             if st.session_state.selected_pdf:
-                 fname, page = st.session_state.selected_pdf
-                 data_url = pdf_data[fname]
-
-                 # ← New iframe embed
-                 iframe_html = f'''
-                     <iframe
-                         src="{data_url}#page={page}"
-                         width="700"
-                         height="800"
-                     ></iframe>
-                 '''
-                 components.html(iframe_html, height=820)
-
-             else:
-                 st.info("Click **View full page** on the left to load the PDF here.")
+                iframe_html = f'''
+                    <iframe
+                        src="{data_url}#page={page}"
+                        width="700"
+                        height="800"
+                    ></iframe>
+                '''
+                components.html(iframe_html, height=820)
+            else:
+                st.info("Click **View full page** on the left to load the PDF here.")
