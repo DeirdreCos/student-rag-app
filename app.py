@@ -1,11 +1,13 @@
 import os
 import streamlit as st
-from langchain.document_loaders.pypdf import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.vectorstores import Chroma
 import streamlit.components.v1 as components
 import re
+from pypdf import PdfReader
+from langchain.schema import Document
+
 
 st.set_page_config(page_title="📚 Student RAG MVP", layout="wide")
 st.title("📖 Research Assistant with Inline PDF Viewer")
@@ -14,11 +16,20 @@ st.title("📖 Research Assistant with Inline PDF Viewer")
 os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 
 # — 2. PDF Uploader & Save to Disk —
-uploaded_files = st.file_uploader(
-    "Upload PDF(s) from your reading list", 
-    type="pdf", 
-    accept_multiple_files=True
-)
+    # Manually load pages using pypdf
+    reader = PdfReader(pdf.name)
+    pages: list[Document] = []
+    for i, page in enumerate(reader.pages, start=1):
+        text = page.extract_text() or ""
+        pages.append(
+            Document(
+                page_content=text,
+                metadata={"source": pdf.name, "page_number": i},
+            )
+        )
+    # Split each page into ~500‑token chunks
+    chunks = splitter.split_documents(pages)
+
 
 if uploaded_files:
     docs = []
