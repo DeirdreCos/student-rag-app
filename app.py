@@ -97,6 +97,9 @@ if uploaded_files:
 
         # RIGHT: single persistent PDF iframe
         with right:
+            # new debug line
+            st.write("🔧 Debug – selected_pdf:", st.session_state.selected_pdf)
+            
             if st.session_state.selected_pdf:
                 fname, page = st.session_state.selected_pdf
                 data_url = pdf_data[fname]
