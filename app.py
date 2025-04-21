@@ -1,6 +1,6 @@
 import os
 import streamlit as st
-from langchain.document_loaders import PyPDFLoader
+from langchain.document_loaders.pypdf import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.vectorstores import Chroma
