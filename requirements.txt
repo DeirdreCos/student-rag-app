@@ -1,7 +1,8 @@
-streamlit
-langchain>=0.0.287
-pypdf
-chromadb
-openai
-tiktoken
-langchain-openai
+ streamlit
+ langchain>=0.0.287
+ langchain-openai
++langchain-community
+ pypdf
+ chromadb
+ openai
+ tiktoken
