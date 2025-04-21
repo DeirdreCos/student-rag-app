@@ -80,3 +80,31 @@ if uploaded_files:
                     (i for i,w in enumerate(words)
                      if re.search(re.escape(query), w, re.IGNORECASE)),
                     len(words)//2
+                )
+                start, end = max(0, pos-75), min(len(words), pos+75)
+                snippet = " ".join(words[start:end])
+                snippet = re.sub(
+                    re.escape(query),
+                    lambda m: f"**{m.group(0)}**",
+                    snippet,
+                    flags=re.IGNORECASE
+                )
+
+                with st.expander(f"{idx}. {src}  (p.{pg})"):
+                    st.write(snippet + " …")
+                    if st.button("View full page", key=f"{idx}"):
+                        st.session_state.selected_pdf = (src, pg)
+
+        # RIGHT: show the PDF via an <embed> tag
+        with right:
+            if st.session_state.selected_pdf:
+                fname, page = st.session_state.selected_pdf
+                data_url = pdf_data[fname]
+                html = (
+                    f'<embed src="{data_url}#page={page}" '
+                    'width="700" height="800" '
+                    'type="application/pdf">'
+                )
+                components.html(html, height=820)
+            else:
+                st.info("Click **View full page** on the left to load the PDF here.")
