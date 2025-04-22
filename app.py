@@ -29,7 +29,7 @@ uploaded = st.file_uploader(
 )
 
 if uploaded:
-    # 3a) Read into memory, build a base64 data‑URL (we won’t embed it, but it’s here)
+    # 3a) Read into memory for full text lookup
     pdf_data = {}
     for pdf in uploaded:
         raw = pdf.read()
@@ -37,7 +37,7 @@ if uploaded:
         pdf_data[pdf.name] = "data:application/pdf;base64," + b64
         pdf.seek(0)
 
-    # 3b) Extract full text **per page** for later preview
+    # 3b) Extract full text per page
     page_texts = {}
     pages = []
     for pdf in uploaded:
@@ -73,13 +73,13 @@ if uploaded:
 
         left, right = st.columns([2, 3])
 
-        # LEFT column: same expandable snippets + “View full page” buttons
+        # LEFT column: expandable snippets + full-page buttons
         with left:
             for idx, doc in enumerate(results, start=1):
                 src = doc.metadata["source"]
                 pg  = doc.metadata["page_number"]
 
-                # build ~150‑word snippet around the query
+                # ~150-word snippet around query
                 text   = re.sub(r"\s+", " ", doc.page_content)
                 words  = text.split()
                 pos    = next(
@@ -101,7 +101,7 @@ if uploaded:
                     if st.button("View full page", key=f"view_{idx}"):
                         st.session_state.selected_pdf = (src, pg)
 
-        # RIGHT column: show a 600‑word preview of the **entire page**
+        # RIGHT column: 600-word preview
         with right:
             if st.session_state.selected_pdf:
                 fname, page = st.session_state.selected_pdf
